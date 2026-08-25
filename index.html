@@ -60,13 +60,26 @@
         <!-- VIEW: USER (JADWAL HARIAN) -->
         <main id="view-user" class="flex-1 overflow-y-auto no-scrollbar p-4 pb-8 relative fade-in">
             <!-- Filter Tanggal Harian -->
-            <div class="bg-slate-800/90 p-1.5 rounded-2xl flex items-center mb-5 border border-slate-700/60 shadow-lg">
+            <div class="bg-slate-800/90 p-1.5 rounded-2xl flex items-center mb-3 border border-slate-700/60 shadow-lg">
                 <button onclick="changeDate(-1)" class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-700 hover:text-white transition-colors">
                     <i class="fa-solid fa-chevron-left"></i>
                 </button>
                 <input type="date" id="filter-date" onchange="renderSchedules()" class="flex-1 bg-transparent text-center text-white font-bold outline-none focus:ring-0 [&::-webkit-calendar-picker-indicator]:invert cursor-pointer text-sm">
                 <button onclick="changeDate(1)" class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-700 hover:text-white transition-colors">
                     <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+
+            <!-- Tab Dashboard Platform (Shopee vs TikTok) -->
+            <div class="grid grid-cols-3 gap-1.5 p-1 bg-slate-900/90 rounded-xl mb-4 border border-slate-800/80 shadow-inner">
+                <button onclick="setUserPlatformFilter('all')" id="user-tab-all" class="py-2 text-xs font-bold rounded-lg transition-all text-white bg-indigo-600 shadow-sm flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-layer-group text-[10px]"></i> Semua <span id="count-user-all" class="bg-indigo-900/80 px-1.5 py-0.5 rounded-full text-[10px]">0</span>
+                </button>
+                <button onclick="setUserPlatformFilter('shopee')" id="user-tab-shopee" class="py-2 text-xs font-bold rounded-lg transition-all text-slate-400 hover:text-orange-400 flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-bag-shopping text-orange-500"></i> Shopee <span id="count-user-shopee" class="bg-slate-800 px-1.5 py-0.5 rounded-full text-[10px]">0</span>
+                </button>
+                <button onclick="setUserPlatformFilter('tiktok')" id="user-tab-tiktok" class="py-2 text-xs font-bold rounded-lg transition-all text-slate-400 hover:text-cyan-400 flex items-center justify-center gap-1.5">
+                    <i class="fa-brands fa-tiktok text-cyan-400"></i> TikTok <span id="count-user-tiktok" class="bg-slate-800 px-1.5 py-0.5 rounded-full text-[10px]">0</span>
                 </button>
             </div>
 
@@ -102,6 +115,13 @@
                         <button onclick="openCopyScheduleModal()" class="px-4 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-semibold hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-2 whitespace-nowrap shadow-sm">
                             <i class="fa-solid fa-copy"></i> Salin Jadwal
                         </button>
+                    </div>
+
+                    <!-- Filter Dashboard Platform Admin -->
+                    <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-800 gap-1 text-xs">
+                        <button onclick="setAdminPlatformFilter('all')" id="admin-filter-all" class="flex-1 py-1.5 rounded-lg bg-indigo-600 text-white font-bold transition-all text-center">Semua</button>
+                        <button onclick="setAdminPlatformFilter('shopee')" id="admin-filter-shopee" class="flex-1 py-1.5 rounded-lg text-slate-400 hover:text-orange-400 font-semibold transition-all text-center flex items-center justify-center gap-1"><i class="fa-solid fa-bag-shopping text-orange-500"></i> Shopee</button>
+                        <button onclick="setAdminPlatformFilter('tiktok')" id="admin-filter-tiktok" class="flex-1 py-1.5 rounded-lg text-slate-400 hover:text-cyan-400 font-semibold transition-all text-center flex items-center justify-center gap-1"><i class="fa-brands fa-tiktok text-cyan-400"></i> TikTok</button>
                     </div>
                 </div>
 
@@ -336,6 +356,19 @@
         let currentAdminTab = 'schedules';
         let currentSwapScheduleId = null;
         let isAdmin = false;
+        
+        let userPlatformFilter = 'all';
+        let adminPlatformFilter = 'all';
+
+        function setUserPlatformFilter(filter) {
+            userPlatformFilter = filter;
+            renderSchedules();
+        }
+
+        function setAdminPlatformFilter(filter) {
+            adminPlatformFilter = filter;
+            renderAdminList();
+        }
 
         const getToday = () => {
             const d = new Date();
@@ -504,16 +537,56 @@
         function renderSchedules() {
             const date = document.getElementById('filter-date').value;
             const container = document.getElementById('schedule-list');
-            const filtered = state.schedules.filter(s => s.date === date);
-            
+            const daySchedules = state.schedules.filter(s => s.date === date);
+
+            const countAll = daySchedules.length;
+            const countShopee = daySchedules.filter(s => {
+                const p = state.platforms.find(x => x.id === s.platformId);
+                return p && p.type === 'shopee';
+            }).length;
+            const countTiktok = daySchedules.filter(s => {
+                const p = state.platforms.find(x => x.id === s.platformId);
+                return p && p.type === 'tiktok';
+            }).length;
+
+            const elAll = document.getElementById('count-user-all');
+            const elShopee = document.getElementById('count-user-shopee');
+            const elTiktok = document.getElementById('count-user-tiktok');
+            if(elAll) elAll.innerText = countAll;
+            if(elShopee) elShopee.innerText = countShopee;
+            if(elTiktok) elTiktok.innerText = countTiktok;
+
+            // Update status visual tab platform pengguna
+            ['all', 'shopee', 'tiktok'].forEach(t => {
+                const btn = document.getElementById(`user-tab-${t}`);
+                if (!btn) return;
+                if (t === userPlatformFilter) {
+                    if (t === 'shopee') btn.className = "py-2 text-xs font-bold rounded-lg transition-all text-white bg-orange-600/90 shadow-md shadow-orange-600/20 flex items-center justify-center gap-1.5 border border-orange-500/40";
+                    else if (t === 'tiktok') btn.className = "py-2 text-xs font-bold rounded-lg transition-all text-white bg-cyan-600/90 shadow-md shadow-cyan-600/20 flex items-center justify-center gap-1.5 border border-cyan-500/40";
+                    else btn.className = "py-2 text-xs font-bold rounded-lg transition-all text-white bg-indigo-600 shadow-md flex items-center justify-center gap-1.5";
+                } else {
+                    btn.className = "py-2 text-xs font-bold rounded-lg transition-all text-slate-400 hover:text-slate-200 flex items-center justify-center gap-1.5";
+                }
+            });
+
+            // Filter daftar jadwal berdasarkan platform pilihan
+            let filtered = daySchedules;
+            if (userPlatformFilter !== 'all') {
+                filtered = daySchedules.filter(s => {
+                    const p = state.platforms.find(x => x.id === s.platformId);
+                    return p && p.type === userPlatformFilter;
+                });
+            }
+
             if (filtered.length === 0) {
+                const platformLabel = userPlatformFilter === 'shopee' ? 'Shopee' : userPlatformFilter === 'tiktok' ? 'TikTok' : '';
                 container.innerHTML = `
                     <div class="flex flex-col items-center justify-center py-16 text-slate-500 fade-in">
                         <div class="w-16 h-16 rounded-2xl bg-slate-800/60 border border-slate-700/50 flex items-center justify-center mb-3">
                             <i class="fa-solid fa-calendar-xmark text-2xl text-slate-500"></i>
                         </div>
-                        <p class="font-semibold text-sm text-slate-400">Tidak ada jadwal live</p>
-                        <p class="text-xs text-slate-500 mt-1">Pilih tanggal lain atau minta Admin menambah jadwal.</p>
+                        <p class="font-semibold text-sm text-slate-400">Tidak ada jadwal live ${platformLabel}</p>
+                        <p class="text-xs text-slate-500 mt-1">Pilih tanggal atau filter platform lain.</p>
                     </div>`;
                 return;
             }
@@ -701,9 +774,30 @@
             const container = document.getElementById('admin-list-container');
             container.innerHTML = '';
 
+            ['all', 'shopee', 'tiktok'].forEach(t => {
+                const btn = document.getElementById(`admin-filter-${t}`);
+                if (!btn) return;
+                if (t === adminPlatformFilter) {
+                    if (t === 'shopee') btn.className = "flex-1 py-1.5 rounded-lg bg-orange-600 text-white font-bold transition-all text-center flex items-center justify-center gap-1 shadow-sm";
+                    else if (t === 'tiktok') btn.className = "flex-1 py-1.5 rounded-lg bg-cyan-600 text-white font-bold transition-all text-center flex items-center justify-center gap-1 shadow-sm";
+                    else btn.className = "flex-1 py-1.5 rounded-lg bg-indigo-600 text-white font-bold transition-all text-center shadow-sm";
+                } else {
+                    btn.className = "flex-1 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 font-semibold transition-all text-center flex items-center justify-center gap-1";
+                }
+            });
+
             if (currentAdminTab === 'schedules') {
                 const date = document.getElementById('admin-filter-date').value;
-                const filtered = state.schedules.filter(s => s.date === date).sort((a,b) => a.time.localeCompare(b.time));
+                let filtered = state.schedules.filter(s => s.date === date);
+
+                if (adminPlatformFilter !== 'all') {
+                    filtered = filtered.filter(s => {
+                        const p = state.platforms.find(x => x.id === s.platformId);
+                        return p && p.type === adminPlatformFilter;
+                    });
+                }
+
+                filtered.sort((a,b) => a.time.localeCompare(b.time));
                 
                 if (filtered.length === 0) {
                     container.innerHTML = `<p class="text-center text-slate-500 py-12 text-xs">Belum ada jadwal pada tanggal ini.</p>`;
